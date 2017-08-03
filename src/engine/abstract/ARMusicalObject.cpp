@@ -71,8 +71,7 @@ ARMusicalObject * ARMusicalObject::Copy() const
 
 TYPE_TIMEPOSITION ARMusicalObject::getRelativeEndTimePosition() const
 {
-	return relativeTimePosition + fDuration; // EndTimeposition==relativeTimeposition,
-	// da duration==0 !
+	return relativeTimePosition + fDuration;
 }
 
 void ARMusicalObject::print(std::ostream & os) const

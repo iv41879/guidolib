@@ -603,7 +603,7 @@ void GRPage::finishPage( bool islastpage )
 	
 	\param arp the new page format description.
 */
-void GRPage::setPageFormat( ARPageFormat * arp )
+void GRPage::setPageFormat( const ARPageFormat * arp )
 {
 	arp->getPageFormat( &mWidth, &mHeight, &mLeftMargin, &mTopMargin, &mRightMargin, &mBottomMargin );
 }
@@ -672,38 +672,38 @@ float GRPage::getInnerHeightCm() const	{ return getInnerHeight() * kVirtualToCm;
 
 	 ! never called !?
 */ 
-void GRPage::systemFinished(GRSystem * inSystem)
-{
-	assert(false);
-
-	if (mSystems.size() == 1)
-	{
-		// then, do nothing ...
-		updateBoundingBox();
-		return;
-	}
-
-	// if we have more than one system ...
-	assert(inSystem == mSystems.back());
-
-	if (m_staffmgr->IsAutoPageBreak() && 
-		inSystem->getPosition().y +
-		inSystem->getBoundingBox().bottom
-		> (getInnerHeight()))
-	{
-		// this just removes the tail from the list, DOES NOT DELETE!
-		mSystems.pop_back();
-
-		// then we have to build a new page ....
-		GRPage * newpage = new GRPage( mCurMusic, m_staffmgr,
-						inSystem->getRelativeTimePosition(), settings, this);
-		inSystem->setGRPage(newpage);
-		float tmpf = 0; //(JB) this one was not initialized !
-		newpage->addSystem(inSystem, &tmpf);
-		m_staffmgr->NewPage(newpage);
-	}
-	updateBoundingBox();
-}
+////void GRPage::systemFinished(GRSystem * inSystem)
+////{
+////	assert(false);
+////
+////	if (mSystems.size() == 1)
+////	{
+////		// then, do nothing ...
+////		updateBoundingBox();
+////		return;
+////	}
+////
+////	// if we have more than one system ...
+////	assert(inSystem == mSystems.back());
+////
+////	if (m_staffmgr->IsAutoPageBreak() && 
+////		inSystem->getPosition().y +
+////		inSystem->getBoundingBox().bottom
+////		> (getInnerHeight()))
+////	{
+////		// this just removes the tail from the list, DOES NOT DELETE!
+////		mSystems.pop_back();
+////
+////		// then we have to build a new page ....
+////		GRPage * newpage = new GRPage( mCurMusic, m_staffmgr,
+////						inSystem->getRelativeTimePosition(), settings, this);
+////		inSystem->setGRPage(newpage);
+////		float tmpf = 0; //(JB) this one was not initialized !
+////		newpage->addSystem(inSystem, &tmpf);
+////		m_staffmgr->NewPage(newpage);
+////	}
+////	updateBoundingBox();
+////}
 
 void GRPage::setHorizontalSpacing()
 {

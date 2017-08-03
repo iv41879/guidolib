@@ -280,7 +280,7 @@ bool GRVoiceManager::parseStateTag(ARMusicalTag * mtag)
 	else if ((staffrmt = dynamic_cast<ARStaffFormat *>(mtag)) != 0)
 		mCurGrStaff->setStaffFormat(staffrmt);
 	else if ( (barfrmt = dynamic_cast<ARBarFormat *>(mtag)) != 0)
-		mStaffMgr->setBarFormat(barfrmt,mCurGrStaff);
+        mCurGrStaff->setBarFormat(barfrmt);
 	else if ( (mstem = dynamic_cast<ARTStem *>(mtag)) != 0) {
 		// it is a stem-tag (stemsUp, stemsDown, stemsAuto)
 		// stemstate = mstem->getStemState();
@@ -310,7 +310,7 @@ bool GRVoiceManager::parseStateTag(ARMusicalTag * mtag)
 		currestformat = restfrmt;
 	else if ((arauto = dynamic_cast<ARAuto *>(mtag)) != 0) {
 			// we have an auto(set)-Tag set...
-			mStaffMgr->setAutoTag(arauto);
+			////mStaffMgr->setAutoTag(arauto);
 	}
 	else
 		retval = false;
@@ -531,7 +531,7 @@ void GRVoiceManager::AddRegularEvent (GREvent * ev)
 
 /** \brief Iterates through the voice.
 
-	dependant on the timeposition and filltagmode different behaviour occurs:
+	Dependant on the timeposition and filltagmode different behavior occurs:
 	if curtp>timepos then timepos is set to curtp and  CURTPBIGGER_ZEROFOLLOWS or CURTPBIGGER_EVFOLLOWS is returned.
 	if curtp<timepos assert(false) is done.
 
@@ -558,73 +558,85 @@ void GRVoiceManager::AddRegularEvent (GREvent * ev)
 	otherwise, other voices could have progressed past the currentTP without handling Tags in a proper way).
 */
 
-int GRVoiceManager::Iterate(TYPE_TIMEPOSITION &timepos, int filltagmode)
+int GRVoiceManager::Iterate(TYPE_TIMEPOSITION &timepos, bool filltagmode)
 {
-	if (fVoiceState->vpos == NULL)
+	if (fVoiceState->vpos == nullptr)
         return ENDOFVOICE;
-	
-	if (fVoiceState->curtp > timepos) {
-		timepos = fVoiceState->curtp;
-		ARMusicalObject * o = arVoice->GetAt(fVoiceState->vpos);
 
-		if (o->getDuration() == DURATION_0)
+    auto currMusicalObject = arVoice->GetAt(fVoiceState->vpos);
+	
+	if (fVoiceState->curtp > timepos) 
+    {
+		timepos = fVoiceState->curtp;
+
+        // if duration is 0 next object can be tag or event with no duration
+        if (currMusicalObject->getDuration() == DURATION_0)
 			return CURTPBIGGER_ZEROFOLLOWS;
 
+        // if duration is >0 than next object is event
 		return CURTPBIGGER_EVFOLLOWS;
 	}
 	
-	if (filltagmode) {
-		ARMusicalObject *o = arVoice->GetAt(fVoiceState->vpos);
-        ARNewSystem *tmp = static_cast<ARNewSystem *>(o->isARNewSystem());
-		if (tmp) {
-			if (tmp->getDY() && tmp->getDY()->TagIsSet()) // then we have a distance to the next system...
-				mStaffMgr->setSystemDistance(tmp->getDY()->getValue(mCurGrStaff->getStaffLSPACE()), *this);
+	if (filltagmode) 
+    {
+        auto newSystem = static_cast<ARNewSystem *>(currMusicalObject->isARNewSystem());
+        if (newSystem) {
+            if (newSystem->getDY() && newSystem->getDY()->TagIsSet()) // then we have a distance to the next system...
+                mStaffMgr->setSystemDistance(newSystem->getDY()->getValue(mCurGrStaff->getStaffLSPACE()), *this);
 			return NEWSYSTEM;
 		}
-        else if (static_cast<ARNewPage *>(o->isARNewPage()))
+        else if (static_cast<ARNewPage *>(currMusicalObject->isARNewPage()))
             return NEWPAGE;
-		else if (static_cast<ARPossibleBreak *>(o->isARPossibleBreak())) {
-			pbreakval = static_cast<ARPossibleBreak *>(o)->getValue();
+        else if (static_cast<ARPossibleBreak *>(currMusicalObject->isARPossibleBreak())) {
+            pbreakval = static_cast<ARPossibleBreak *>(currMusicalObject)->getValue();
 			return PBREAK;
 		} 
 
-		if (o->getDuration() == DURATION_0) {
+        if (currMusicalObject->getDuration() == DURATION_0) 
+        {
 			// now we have a tag (no position tag!) or an event with duration 0, handle it...
-			if (ARMusicalEvent::cast(o)) {
-				// Then we create an EMPTY-Event handling all the startPTags and endPTags...
-				checkStartPTags(fVoiceState->vpos);
-				GREvent *ev = NULL;
-				
+            if (ARMusicalEvent::cast(currMusicalObject)) 
+            {
+                // It is event with 0 duration
+
+                // Check if some position tags must be added due to the
+                // matching start time position
+                checkStartPTags(fVoiceState->vpos);
+
+				GREvent *ev = nullptr;
 				if (mCurGrace) {
 					// then we have to create a GRACE-Note (which is a real note, no duration but somewhat 
 					// drawn as well... the associations are set regardless...)
 					// this must be the parameter from ARGrace...
 					// check whether this is an empty-event anyhow...
-					TYPE_DURATION dur(o->getDuration());
+                    TYPE_DURATION dur(currMusicalObject->getDuration());
 
 					if (fVoiceState->fCurdispdur)
                         dur = fVoiceState->fCurdispdur->getDisplayDuration();
 
-					ev = CreateGraceNote(timepos,o,dur);
+                    ev = CreateGraceNote(timepos, currMusicalObject, dur);
+
 					// this adds the Grace-Note as a regular  event...
 					AddRegularEvent(ev);
 				}
 				else {
 					// careful, what happens to dispDur !!!!
-					if (fVoiceState->fCurdispdur != NULL && fVoiceState->fCurdispdur->getDisplayDuration() > DURATION_0) {
-                        if (static_cast<ARNote *>(o->isARNote()))
-                            ev = CreateNote(timepos,o);
-                        else if (static_cast<ARRest *>(o->isARRest()))
-                            ev = CreateRest(timepos,o);
+					if (fVoiceState->fCurdispdur != nullptr && 
+                        fVoiceState->fCurdispdur->getDisplayDuration() > DURATION_0) {
+                        if (static_cast<ARNote *>(currMusicalObject->isARNote()))
+                            ev = CreateNote(timepos, currMusicalObject);
+                        else if (static_cast<ARRest *>(currMusicalObject->isARRest()))
+                            ev = CreateRest(timepos, currMusicalObject);
 					}
 					// changed on Apr 19 2011 DF
 					// the test has been moved out of CreateEmpty
-					else if (o->getDuration() <= DURATION_0)
-						ev = CreateEmpty (timepos, o);
+                    else if (currMusicalObject->getDuration() <= DURATION_0)
+                        ev = CreateEmpty(timepos, currMusicalObject);
 					else
-                        ev = 0;
+                        ev = nullptr;
 
-                    if (ev) {
+                    if (ev) 
+                    {
                         AddRegularEvent (ev);
 
                         if (GRNote *grnote = dynamic_cast<GRNote *>(ev)) {
@@ -646,42 +658,48 @@ int GRVoiceManager::Iterate(TYPE_TIMEPOSITION &timepos, int filltagmode)
                             }
 
                             if (mCurCluster && mCurrentClusterNoteNumber == mCurCluster->getNoteCount()) {
-                                mCurCluster = NULL; 
+                                mCurCluster = nullptr; 
                                 mCurrentClusterNoteNumber = 0;
                             }
                         }
                     }
 				}
 
+                //! Increment the position
 				GuidoPos prevpos = fVoiceState->vpos;
-				// increment the curvoice... increment the position...
 				arVoice->GetNext(fVoiceState->vpos, *fVoiceState);
 				
-				// Check Ending Tags...
+				// Check if some position tags can be removed due to the
+                // matching end time position
 				if (fVoiceState->removedpositiontags)
                     checkEndPTags(prevpos);
 
-				if (fVoiceState->vpos) {
-					// check, what the next element in the voice is (tag, zero-event or event)
-					ARMusicalObject *o = arVoice->GetAt(fVoiceState->vpos);
+                // Check next voice musical object - tag, zero-event or event
+				if (fVoiceState->vpos) 
+                {
+                    ARMusicalObject *nextMusicalObject = arVoice->GetAt(fVoiceState->vpos);
 					
-					//we give to the object the information about the state on-off of the staff
-					o->setDrawGR(GRVoiceManager::getCurStaffDraw(staffnum) && o->getDrawGR());
+					// we give to the object the information about the state on-off of the staff
+                    nextMusicalObject->setDrawGR(GRVoiceManager::getCurStaffDraw(staffnum) && nextMusicalObject->getDrawGR());
 				
-					if (o->getDuration() == DURATION_0)
+                    if (nextMusicalObject->getDuration() == DURATION_0)
 						return DONE_ZEROFOLLOWS;
 
-					assert(ARMusicalEvent::cast(o));
-
+                    assert(ARMusicalEvent::cast(nextMusicalObject));
 					return DONE_EVFOLLOWS;
 				}
 
 				return DONE;
 			}
-			else {
-				GRNotationElement *grne = parseTag(o);
-				if (grne) {
-					// tag was handled... here, we distinguish the different graphical TAG-Types
+			else 
+            {
+                // It is a tag (but not position tag)
+
+                GRNotationElement *grne = parseTag(currMusicalObject);
+
+				if (grne) 
+                {
+					// distinguish the different graphical TAG-Types
 					GRTag *tag = dynamic_cast<GRTag *>(grne);
 					
 					if (tag && (tag->getTagType() == GRTag::SYSTEMTAG))
@@ -693,7 +711,7 @@ int GRVoiceManager::Iterate(TYPE_TIMEPOSITION &timepos, int filltagmode)
 							GuidoTrace("Tag with spring in a globalstem or global location!");
 							// The tag is no longer added but gets associated with
 							// the curglobalthing that is active at that point...
-							GRNotationElement *firstEl = NULL;
+							GRNotationElement *firstEl = nullptr;
 
 							if (curgloballocation)
 								firstEl = curgloballocation->getFirstEl();
@@ -709,51 +727,56 @@ int GRVoiceManager::Iterate(TYPE_TIMEPOSITION &timepos, int filltagmode)
 				}
 				else {
 					// not handled !?
-					ARMusicalTag *armt = static_cast<ARMusicalTag *>(o->isARMusicalTag());
+                    ARMusicalTag *armt = static_cast<ARMusicalTag *>(currMusicalObject->isARMusicalTag());
 					if (!armt || !armt->IsStateTag())
 						GuidoTrace("Warning, Tag not handled");
 				}
 			}
 
-			// increment the position...
+			//! increment the position...
 			arVoice->GetNext(fVoiceState->vpos, *fVoiceState);
 
+            // Check next voice musical object - tag, zero-event or event
 			if (fVoiceState->vpos) {
-				// check, what the next element in the voice is (tag, zero-event or event)
-				ARMusicalObject *o = arVoice->GetAt(fVoiceState->vpos);
+				ARMusicalObject * nextMusicalObject = arVoice->GetAt(fVoiceState->vpos);
 				
 				//we give to the object the information about the state on-off of the staff
-				o->setDrawGR(GRVoiceManager::getCurStaffDraw(staffnum) && o->getDrawGR());
+                nextMusicalObject->setDrawGR(GRVoiceManager::getCurStaffDraw(staffnum) && nextMusicalObject->getDrawGR());
 
-				if (o->getDuration() == DURATION_0)
+                if (nextMusicalObject->getDuration() == DURATION_0)
 					return DONE_ZEROFOLLOWS;
 
-				assert(ARMusicalEvent::cast(o));
-
+                assert(ARMusicalEvent::cast(nextMusicalObject));
 				return DONE_EVFOLLOWS;
 			}
 
 			return DONE;
 		}
-		else		// duration > 0,
+		else
 			return MODEERROR;
 	}
-	else {			// filltagmode == 0
-		ARMusicalObject *o = arVoice->GetAt(fVoiceState->vpos);
+    // no-filltagmode = eventmode
+	else 
+    {			
 		// We give to the object the information about the state on-off of the staff
-		o->setDrawGR(GRVoiceManager::getCurStaffDraw(staffnum) && o->getDrawGR());
+        currMusicalObject->setDrawGR(GRVoiceManager::getCurStaffDraw(staffnum) && currMusicalObject->getDrawGR());
 
-		if (o->getDuration() == DURATION_0) {
+        if (currMusicalObject->getDuration() == DURATION_0) {
 			/* assert(false); */
 			// This MUST not happen, because then, other voices can already have progressed...
 			// return MODEERROR;
 		}
-		else	// handle the event...
+		else
 		{
-			ARMusicalEvent * arev = ARMusicalEvent::cast(o);
+            // It is even - note, rest (if duration is greater than 0)
+            ARMusicalEvent * arev = ARMusicalEvent::cast(currMusicalObject);
+
+            // Check if some position tags must be added due to the
+            // matching start time position
 			// This creates the graphical representation for position-tags, that start at the current position...
-			checkStartPTags(fVoiceState->vpos);			
-			GREvent * grev = NULL;
+			checkStartPTags(fVoiceState->vpos);		
+
+			GREvent * grev = nullptr;
 
             if (static_cast<ARNote *>(arev->isARNote()))
                 grev = CreateNote(timepos,arev);
@@ -764,7 +787,8 @@ int GRVoiceManager::Iterate(TYPE_TIMEPOSITION &timepos, int filltagmode)
 			if (grev->getDuration() > DURATION_0)
 				fLastnonzeroevent = grev;
 
-			if (toadd && toadd->empty() == false )
+            // List of events that needs to be added before the regular event itself (like GRGrace notes)
+			if (toadd && !toadd->empty())
 			{
 				GuidoPos mypos = toadd->GetHeadPosition();
 				while (mypos)
@@ -775,35 +799,40 @@ int GRVoiceManager::Iterate(TYPE_TIMEPOSITION &timepos, int filltagmode)
 				}
 				toadd->RemoveAll();
 			}
+
 			AddRegularEvent(grev);
 
-
-			// set the duration/timeposition...!			
-			// important: take the AR-Representation here, as the graphical is dependant on the display-Duration-Setting.
-			timepos = arev->getRelativeEndTimePosition();			
-			GuidoPos prevpos = fVoiceState->vpos;
-			// increment the curvoice... increment the position...
+			//! increment the position...
+            GuidoPos prevpos = fVoiceState->vpos;
 			arVoice->GetNext(fVoiceState->vpos, *fVoiceState);
 			
-			// Check Ending Tags...
-			if (fVoiceState->removedpositiontags)
+            // Check if some position tags can be removed due to the
+            // matching end time position
+            if (fVoiceState->removedpositiontags)
                 checkEndPTags(prevpos);			
+
+            // Check next voice musical object - tag, zero-event or event
 			if (fVoiceState->vpos)
 			{
-				// check what the next element in the voice is (tag, zero-event or event)
-				ARMusicalObject *o = arVoice->GetAt(fVoiceState->vpos);
+				ARMusicalObject *nextMusicalObject = arVoice->GetAt(fVoiceState->vpos);
 				
-				//we give to the object the information about the state on-off of the staff
-				o->setDrawGR(GRVoiceManager::getCurStaffDraw(staffnum) && o->getDrawGR());
+				// we give to the object the information about the state on-off of the staff
+                nextMusicalObject->setDrawGR(GRVoiceManager::getCurStaffDraw(staffnum) && nextMusicalObject->getDrawGR());
 
-				if (o->getDuration() == DURATION_0)
+                if (nextMusicalObject->getDuration() == DURATION_0)
 					return DONE_ZEROFOLLOWS;
-				assert(ARMusicalEvent::cast(o));
+                assert(ARMusicalEvent::cast(nextMusicalObject));
 				return DONE_EVFOLLOWS;
 			}
+
+            //! Increase the duration/timeposition			
+            // important: take the AR-Representation here, as the graphical is dependent on the display-Duration-Setting.
+            timepos = arev->getRelativeEndTimePosition();
+
 			return DONE;
 		}		
 	}
+
 	return MODEERROR;
 }
 
@@ -1246,8 +1275,6 @@ GRNotationElement * GRVoiceManager::parseTag(ARMusicalObject * arOfCompleteObjec
 */
 void GRVoiceManager::checkStartPTags(GuidoPos tstpos)
 {
-//	ARPositionTag * apt;
-
     // look if there are Tags with matching start-positions...
 	// new version: look only in newly added positiontags!
 	PositionTagList * ptaglst = fVoiceState->addedpositiontags;
@@ -1274,7 +1301,6 @@ void GRVoiceManager::parsePositionTag(ARPositionTag *apt)
 
 	//we give to the tag the information about the state on-off of the staff
 	mtag->setDrawGR(GRVoiceManager::getCurStaffDraw(staffnum) && mtag->getDrawGR());
-
 
 	const std::type_info & tinf = typeid(*apt);
 
@@ -2139,8 +2165,8 @@ void GRVoiceManager::ReadBeginTags(const TYPE_TIMEPOSITION & tp)
 			mStaffMgr->setPageFormat(pform);		// we have a page-Format-tag
 		else if ( !sysform && (sysform = dynamic_cast<ARSystemFormat *>(mtag)) != 0)
 			mStaffMgr->setSystemFormat(sysform);	// we have a systemFormat-tag
-		else if (!arauto && (arauto = dynamic_cast<ARAuto *>(mtag)) != 0)
-			mStaffMgr->setAutoTag(arauto);
+		////else if (!arauto && (arauto = dynamic_cast<ARAuto *>(mtag)) != 0)
+			////mStaffMgr->setAutoTag(arauto);
 		else if (!stffrm && (stffrm = dynamic_cast<ARStaffFormat *>(mtag)) != NULL) {
 			// we have a staffFormat-tag if we do not have a mCurGrStaff yet ?
 			mCurGrStaff = mStaffMgr->getStaff(staffnum);

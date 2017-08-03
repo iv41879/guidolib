@@ -100,7 +100,7 @@ protected:
 	// this variable holds the current begin
 	// sff: this space would be needed, if the
 	// slice would be the first of a potential line of music.
-	GRBeginSpaceForceFunction2 * mBeginForceFunc;	// was curbegsff
+	const GRBeginSpaceForceFunction2 * mBeginForceFunc;	// was curbegsff
 	GRSpaceForceFunction2 * mForceFunction;	// was sff
 
 	StaffVector *	mStaffs;

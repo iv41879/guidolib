@@ -58,7 +58,7 @@ public:
 	
 				 GRSystem(GRStaffManager * stfmgr, GRPage * inPage, const TYPE_TIMEPOSITION & relativeTimePositionOfSystem,
 							SSliceList ** systemslices, int count, GRSystemSlice * beginslice, ISpringVector ** pvect,
-							ARSystemFormat * sysform, float force, float spring, float proportionnalRender,
+							const ARSystemFormat * sysform, float force, float spring, float proportionnalRender,
 							bool islastsystem = false);
 	virtual 	~GRSystem();
 
@@ -76,7 +76,7 @@ public:
 	const SSliceList *  getSlices() const						{ return &mSystemSlices; }
 
 	void        setSpringParameter(float nconst);
-	void        setSystemFormat( ARSystemFormat * sysfrm );
+	void        setSystemFormat( const ARSystemFormat * sysfrm );
 	void        setDistance( float inDistance )					{ mDistanceSet = true; mDistance = inDistance; }
 	void        setGRPage( GRPage * inNewPage )					{ mPage = inNewPage; }
 	void        setMeterOfStaffs( int num, int denom );

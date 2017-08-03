@@ -260,7 +260,7 @@ GRStaff * GRSystem::ComputeBoundingBox (GRSliceHeight &sliceheight)
 GRSystem::GRSystem(GRStaffManager * staffmgr, GRPage * inPage,
 					const TYPE_TIMEPOSITION & relativeTimePositionOfSystem,
 					SSliceList ** psystemslices, int count,
-					GRSystemSlice * beginslice, ISpringVector ** pvect, ARSystemFormat * sysform, float optForce,
+					GRSystemSlice * beginslice, ISpringVector ** pvect, const ARSystemFormat * sysform, float optForce,
 					float spring, float proportionnalRender,
 					bool islastsystem)
 
@@ -1126,7 +1126,7 @@ const GRSpring * GRSystem::getGRSpring( int id ) const
 // ----------------------------------------------------------------------------
 /** \brief Sets the system-format
 */
-void GRSystem::setSystemFormat(ARSystemFormat * sysfrm)
+void GRSystem::setSystemFormat(const ARSystemFormat * sysfrm)
 {
 	traceMethod("setSystemFormat");
 	if( sysfrm == 0 ) return;
@@ -1137,8 +1137,7 @@ void GRSystem::setSystemFormat(ARSystemFormat * sysfrm)
 	// and the dx has to be done ....
 	if (sysfrm->getDX() && sysfrm->getDX()->TagIsSet())
 	{
-		const float dx = sysfrm->getDX()->getValue();
-		mMarginLeft = dx;
+        mMarginLeft = sysfrm->getDX()->getValue();
 		setPosition( mPosition );
 	}
 }

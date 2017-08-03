@@ -32,7 +32,7 @@ public:
 				 ARPageFormat();
 	virtual 	~ARPageFormat();
 
-	void		 getPageFormat(float * sx, float * sy, float * ml, float * mt, float * mr, float * mb );
+	void		 getPageFormat(float * sx, float * sy, float * ml, float * mt, float * mr, float * mb ) const;
 	void		 setPageFormat(float sx, float sy, float ml, float mt, float mr, float mb );
 
 	void operator=(const ARPageFormat& format);

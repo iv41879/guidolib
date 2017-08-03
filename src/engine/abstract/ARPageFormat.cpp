@@ -251,7 +251,7 @@ void ARPageFormat::setTagParameterList(	TagParameterList & tpl )
 	\note: returns Guido internal units.
 */
 void ARPageFormat::getPageFormat( float * sx, float * sy, float * ml, float * mt, 
-															float * mr, float * mb )
+															float * mr, float * mb ) const
 {
 	*sx = (float)(mSizeX); //  * kVirtualToCm);
 	*sy = (float)(mSizeY);

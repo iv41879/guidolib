@@ -45,10 +45,10 @@ class GRPage : public GREvent
 	virtual 	~GRPage();
 
 	bool		addSystem( GRSystem * inSystem, float * ioUsedSystemDistance );
-	void		systemFinished(GRSystem * inSystem);
+	////void		systemFinished(GRSystem * inSystem);
 	void		finishPage( bool islastpage = false ); // system distribution
 	void		setSpringParameter(float npar);
-	void		setPageFormat(ARPageFormat * inFormat);
+	void		setPageFormat( const ARPageFormat * inFormat);
 	void 		adjustPageSize();
 	void		checkCollisions(TCollisions& state, bool lyrics) const;
 	float		getNotesDensity() const;

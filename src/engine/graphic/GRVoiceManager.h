@@ -96,7 +96,7 @@ public:
 //	virtual void	EndManageVoice( const TYPE_TIMEPOSITION & tp);
 	virtual void	BeginManageVoice();
 
-			int		Iterate		(TYPE_TIMEPOSITION & tp, int filltagmode);
+			int		Iterate		(TYPE_TIMEPOSITION & tp, bool filltagmode);
 			int		DoBreak		(const TYPE_TIMEPOSITION & tp, int system_or_page);
 			int		getStaffNum () const	{ return staffnum; }
 			const ARMusicalVoiceState * getVoiceState() const	{ return fVoiceState; }
