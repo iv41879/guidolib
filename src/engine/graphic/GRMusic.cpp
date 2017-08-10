@@ -640,7 +640,7 @@ void GRMusic::createGR (const ARPageFormat * inPageFormat, const GuidoLayoutSett
 	DeleteContent( &mVoiceList );
 
 	if (fLyricsChecked && (!settings || !settings->checkLyricsCollisions))
-		removeAutoSpace(arm);
+		removeAutoSpace(arm); // removes ARSpace objects which were used for collision resolving
 
 	// - Creates new voices
 	GuidoPos pos = arm->GetHeadPosition();

@@ -58,8 +58,8 @@ int ARVoiceManager::Iterate( TYPE_TIMEPOSITION & tp, int filltagmode )
 	if (mCurrVoiceState.vpos == NULL)
 		return ENDOFVOICE;
 
-	if (mCurrVoiceState.curtp > tp) {
-		tp = mCurrVoiceState.curtp;
+	if (mCurrVoiceState.curTimePosition > tp) {
+        tp = mCurrVoiceState.curTimePosition;
 		ARMusicalObject * o = mVoice->GetAt(mCurrVoiceState.vpos);
 		assert(o);
 		if (o->getDuration() == DURATION_0)
@@ -67,7 +67,7 @@ int ARVoiceManager::Iterate( TYPE_TIMEPOSITION & tp, int filltagmode )
 		return CURTPBIGGER_EVFOLLOWS;
 	}
 
-	assert( mCurrVoiceState.curtp == tp );
+    assert(mCurrVoiceState.curTimePosition == tp);
 	ARMusicalObject *o = mVoice->GetAt(mCurrVoiceState.vpos);
 	if (filltagmode)
 	{
@@ -96,7 +96,7 @@ int ARVoiceManager::Iterate( TYPE_TIMEPOSITION & tp, int filltagmode )
 	{
 		assert ((double)o->getDuration() != 0);
 		mVoice->GetNext(mCurrVoiceState.vpos, mCurrVoiceState);
-		tp = mCurrVoiceState.curtp;
+        tp = mCurrVoiceState.curTimePosition;
 		if (mCurrVoiceState.vpos)
 		{
 			ARMusicalObject *o = mVoice->GetAt(mCurrVoiceState.vpos);
@@ -120,7 +120,7 @@ int ARVoiceManager::InsertBreak( const TYPE_TIMEPOSITION & tp, int breaktype, fl
 //		return -1;
 
 
-	if (mCurrVoiceState.curtp > tp)
+    if (mCurrVoiceState.curTimePosition > tp)
 	{
 		// then we have to decrement
 		// and adjust the event 
@@ -149,9 +149,9 @@ int ARVoiceManager::InsertBreak( const TYPE_TIMEPOSITION & tp, int breaktype, fl
 
 		// these tags area auto-tags!
 		mytag->setIsAuto(1);
-		mytag->setRelativeTimePosition(mCurrVoiceState.curtp);
-		if (mCurrVoiceState.curtp == mCurrVoiceState.curlastbartp)
-			mVoice->AddElementAfter( mCurrVoiceState.curlastbarpos, mytag );
+        mytag->setRelativeTimePosition(mCurrVoiceState.curTimePosition);
+        if (mCurrVoiceState.curTimePosition == mCurrVoiceState.lastBarLineTimePosition)
+			mVoice->AddElementAfter( mCurrVoiceState.lastBarLinePosition, mytag );
 		else
 			mVoice->AddElementAt( mCurrVoiceState.vpos, mytag );
 
@@ -180,20 +180,20 @@ int ARVoiceManager::InsertBreak( const TYPE_TIMEPOSITION & tp, int breaktype, fl
 			// if the timeposition of the /newSystem|Page|PBreak is greater than mCurrVoiceState.curtp, 
 			// we need to add an empty- event to cover the distance. Otherwise it will not match
 			// in GRVoiceManager!
-			TYPE_DURATION dur = tp - mCurrVoiceState.curtp;
+            TYPE_DURATION dur = tp - mCurrVoiceState.curTimePosition;
 			if (dur > DURATION_0)
 			{
-				ARNote * note = new ARNote(mCurrVoiceState.curtp, dur);
+                ARNote * note = new ARNote(mCurrVoiceState.curTimePosition, dur);
 				note->setPitch( EMPTY );
 				mVoice->AddTail(note);
-				mCurrVoiceState.curtp += dur;
+                mCurrVoiceState.curTimePosition += dur;
 			}
 
 			// these tags area auto-tags!
 			mytag->setIsAuto( true );
-			mytag->setRelativeTimePosition(mCurrVoiceState.curtp);
-			if (mCurrVoiceState.curtp == mCurrVoiceState.curlastbartp)
-				mVoice->AddElementAfter( mCurrVoiceState.curlastbarpos, mytag );
+            mytag->setRelativeTimePosition(mCurrVoiceState.curTimePosition);
+            if (mCurrVoiceState.curTimePosition == mCurrVoiceState.lastBarLineTimePosition)
+				mVoice->AddElementAfter( mCurrVoiceState.lastBarLinePosition, mytag );
 			else
 				mVoice->AddTail( mytag );
 			return 0;
@@ -222,13 +222,13 @@ int ARVoiceManager::InsertBreak( const TYPE_TIMEPOSITION & tp, int breaktype, fl
 				mytag = arpb;
 			}
 			mytag->setIsAuto(true);
-			mytag->setRelativeTimePosition(mCurrVoiceState.curtp);
+            mytag->setRelativeTimePosition(mCurrVoiceState.curTimePosition);
             /*
              (jfk)
              TODO fix issue, if \bar immediately followed by a \key => insert break AFTER \key
              */
-			if (mCurrVoiceState.curtp == mCurrVoiceState.curlastbartp)
-				mVoice->AddElementAfter(mCurrVoiceState.curlastbarpos,mytag);
+            if (mCurrVoiceState.curTimePosition == mCurrVoiceState.lastBarLineTimePosition)
+				mVoice->AddElementAfter(mCurrVoiceState.lastBarLinePosition, mytag);
 			else
 				mVoice->AddElementAt(mCurrVoiceState.vpos,mytag);
 		}
@@ -264,7 +264,7 @@ float ARVoiceManager::CheckBreakPosition(const TYPE_TIMEPOSITION &tp) const
 
 	// this only happens, if there is no meter
 	// in the current voice ....
-	if (mCurrVoiceState.curtp > tp) {
+    if (mCurrVoiceState.curTimePosition > tp) {
 		Fraction tmp(2, 1);
 
 		if (tp - mLastBreakTimePos < tmp)
@@ -301,15 +301,16 @@ float ARVoiceManager::CheckBreakPosition(const TYPE_TIMEPOSITION &tp) const
 	if (mCurrVoiceState.vpos == NULL)
 		return -1.0f;
 
-	assert(mCurrVoiceState.curtp == tp);
+    assert(mCurrVoiceState.curTimePosition == tp);
 
-	if (mCurrVoiceState.curlastbartp == tp)	// it is a barline-position
+	if (mCurrVoiceState.lastBarLineTimePosition == tp)	// it is a barline-position
 		return 1.5f;
     else if (mCurrVoiceState.curmeter) {
-        if (mCurrVoiceState.curtp - (mCurrVoiceState.curmeter->getMeterDuration() * DURATION_2) == mCurrVoiceState.curlastbartp)
+        if (mCurrVoiceState.curTimePosition - (mCurrVoiceState.curmeter->getMeterDuration() * DURATION_2) 
+            == mCurrVoiceState.lastBarLineTimePosition)
             return -1.0f;
         else {
-            TYPE_TIMEPOSITION tmptp(tp - mCurrVoiceState.curlastbartp);
+            TYPE_TIMEPOSITION tmptp(tp - mCurrVoiceState.lastBarLineTimePosition);
 
             if (tmptp.getDenominator() == mCurrVoiceState.curmeter->getDenominator())
                 return -1.0f;

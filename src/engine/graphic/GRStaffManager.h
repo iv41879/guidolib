@@ -252,7 +252,7 @@ class GRStaffManager
         VStaff *		   mMyStaffs;
         PositionVector	   staffposvect;
         VoiceManagerList * mVoiceMgrList;
-        GRSystemSlice * mGrSystemSlice;
+        GRSystemSlice * mCurGrSystemSlice;
         GRSystem *		mGrSystem;
         GRMusic *		mGrMusic;
         GRPage *		mGrPage;

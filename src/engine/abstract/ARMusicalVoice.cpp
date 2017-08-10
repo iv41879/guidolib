@@ -159,32 +159,31 @@ GuidoPos ARMusicalVoice::GetHeadPosition(ARMusicalVoiceState &vst) const
 {
 	// we have to deal with chords, just as if we were in the GetNext->routine.
 	// if the very first thing in the voice is a chord, then I have to set the chordState ....
+    // Note that chordState is complete ARMusicalVoiceState at that position.
 	vst.DeleteAll();
 
-	// set the position to the very start.
-	vst.vpos = ObjectList::GetHeadPosition();
+    vst.ptagpos = mPosTagList ? mPosTagList->GetHeadPosition() : nullptr;
 
-	if (mPosTagList)
-        vst.ptagpos = mPosTagList->GetHeadPosition();
-	else
-        vst.ptagpos = NULL;
+    // set the position to the very start.
+    vst.vpos = ObjectList::GetHeadPosition();
 
-	// there is NOTHING in the voice.
-	if (vst.vpos == NULL) {
-		vst.curtp = DURATION_0;
+    // check if there are any ARMusicalObjects contained
+	if (vst.vpos == nullptr) {
+        // there is NOTHING in the voice.
+		vst.curTimePosition = DURATION_0;
 		return vst.vpos;
 	}
 
-//	ARMusicalTag * mytag;
-	ARMusicalObject *obj = GetAt(vst.vpos);
+    // ARMusicalVoice here contains one or more ARMusicalObjects
 
 	// now for the new mPosTagList-stuff: the position is remembered in vst.ptagpos ...
 	if (mPosTagList) {
 		while (vst.ptagpos) {
 			ARPositionTag *ptag = mPosTagList->GetAt(vst.ptagpos);
 			// remember that we are at the beginning ...
-			ARTagEnd *artgend = ARTagEnd::cast(ptag);
 
+            // ARTagEnd is base class for additional tags (MoreMusicalTags.cpp) like AutoBeam and DummyRange tags
+			ARTagEnd *artgend = ARTagEnd::cast(ptag);
 			if (artgend)
                 break;
 
@@ -200,10 +199,10 @@ GuidoPos ARMusicalVoice::GetHeadPosition(ARMusicalVoiceState &vst) const
 	/* now we are not eating all the state-tags any longer. This needs to be done in the voice-manager.
 	Otherwise, no real graphical representations can be made .... */
 //	mytag = NULL;
-	if (obj)
-        vst.curtp = obj->getRelativeTimePosition();
-	else
-        vst.curtp = DURATION_0;
+
+    ARMusicalObject *currMusicalObject = GetAt(vst.vpos);
+
+    vst.curTimePosition = currMusicalObject ? currMusicalObject->getRelativeTimePosition() : DURATION_0;
 
 	// now I have to see whether we are in chordmode ....
 	if (readmode == CHORDMODE && vst.curchordtag)
@@ -375,7 +374,7 @@ void ARMusicalVoice::GetPrevEvent(GuidoPos & pos, ARMusicalVoiceState & vst) con
 
 	pos = tmppos;
 	vst.vpos = pos;
-	vst.curtp = ar->getRelativeTimePosition();
+	vst.curTimePosition = ar->getRelativeTimePosition();
 }
 
 //____________________________________________________________________________________
@@ -433,8 +432,8 @@ ARMusicalObject * ARMusicalVoice::GetNext(GuidoPos &pos, ARMusicalVoiceState &vs
                 }
 
                 if (mytag->isARBar()) {
-                    vst.curlastbartp  = obj->getRelativeTimePosition();
-                    vst.curlastbarpos = prevpos;
+                    vst.lastBarLineTimePosition  = obj->getRelativeTimePosition();
+                    vst.lastBarLinePosition = prevpos;
                 }
             }
         }
@@ -455,9 +454,9 @@ ARMusicalObject * ARMusicalVoice::GetNext(GuidoPos &pos, ARMusicalVoiceState &vs
 
 	vst.vpos = pos;
 	if (first)
-		vst.curtp = first->getRelativeEndTimePosition();
+		vst.curTimePosition = first->getRelativeEndTimePosition();
 	else
-		vst.curtp = DURATION_0;
+        vst.curTimePosition = DURATION_0;
 
 	if (readmode == CHORDMODE) {
 		if (vst.chordState) {
@@ -659,7 +658,7 @@ GuidoPos ARMusicalVoice::AddTail(ARMusicalObject *newMusicalObject)
     
     if (!isInChord) {
         mCurVoiceState->vpos = tmp;
-	    mCurVoiceState->curtp = getDuration();
+	    mCurVoiceState->curTimePosition = getDuration();
     }
 
 	return tmp;
@@ -2470,7 +2469,7 @@ GuidoPos ARMusicalVoice::CopyChord(ARMusicalVoiceState &vst, TYPE_TIMEPOSITION t
 	}
 	else staffstatenum = curstaff->getStaffNumber();
 
-	TYPE_TIMEPOSITION oldtp = vst.curtp;
+	TYPE_TIMEPOSITION oldtp = vst.curTimePosition;
 	TYPE_TIMEPOSITION newtp;
 	ARMusicalObject * obj = ObjectList::GetAt(vst.vpos);
 	assert(obj);
@@ -2947,7 +2946,7 @@ GuidoPos ARMusicalVoice::CopyChord(ARMusicalVoiceState &vst, TYPE_TIMEPOSITION t
 					ntie->setIsAuto(true);
 					ntie->setID(gCurArMusic->mMaxTagId++);
 					ntie->setPosition(myvst2.vpos);
-					ntie->setRelativeTimePosition(myvst2.curtp);
+					ntie->setRelativeTimePosition(myvst2.curTimePosition);
 					GuidoPos saveptagpos = NULL;
 					if (vst.ptagpos == myvst2.ptagpos)
 					{
@@ -3016,7 +3015,7 @@ void ARMusicalVoice::doAutoEndBar()
 			}
 			// now check whether there is a bar tag at the end ...
 			// if this is the case, we do not set an endbar ....
-			if (endState->curlastbartp == endState->curtp)
+			if (endState->lastBarLineTimePosition == endState->curTimePosition)
 			{
 				finishbar = false;
 			}
@@ -4500,7 +4499,7 @@ void ARMusicalVoice::SplitEventAtPos( ARMusicalVoiceState & vst, const TYPE_TIME
 
 		pos = newpos;
 		vst.vpos = pos;
-		vst.curtp = ev2->getRelativeTimePosition();
+		vst.curTimePosition = ev2->getRelativeTimePosition();
 	}
 }
 
@@ -5623,7 +5622,7 @@ void ARMusicalVoice::FinishChord(bool trill)
 	mPosTagList->AddTail(dummy);
 
 	// now we have to traverse the voice once more to set the timepositions correctly
-	TYPE_TIMEPOSITION starttp(mCurVoiceState->curtp);
+	TYPE_TIMEPOSITION starttp(mCurVoiceState->curTimePosition);
     TYPE_TIMEPOSITION newtp(starttp + chorddur);
 	int firstevent = 0;
 
@@ -5962,7 +5961,7 @@ void ARMusicalVoice::MarkVoice( int fromnum, int fromdenom, int lengthnum, int l
 	{
 		GuidoPos prevpos = vst.vpos;
 		// GuidoPos ptagpos = vst.ptagpos;
-		const TYPE_TIMEPOSITION tp (vst.curtp);
+		const TYPE_TIMEPOSITION tp (vst.curTimePosition);
 		ARMusicalObject * o = GetNext(vst.vpos,vst);
 		ARMusicalObject * oEv = ARMusicalEvent::cast(o);
 
@@ -5972,7 +5971,7 @@ void ARMusicalVoice::MarkVoice( int fromnum, int fromdenom, int lengthnum, int l
 			startpos = prevpos;
 		}
 
-		if (startpos && oEv && vst.curtp == endtpos)
+		if (startpos && oEv && vst.curTimePosition == endtpos)
 		{
 			endpos = prevpos;
 			break;

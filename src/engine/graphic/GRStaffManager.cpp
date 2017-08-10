@@ -135,9 +135,9 @@ GRStaffManager::GRStaffManager(GRMusic * p_grmusic, const ARPageFormat * inPageF
 	// a GRSystem is build later from the slices ...
 	// Or should we start with at least one system this is not yet clear -> we leave it nullptr at first.
 	// the very first SystemSlice ....
-	mGrSystemSlice = new GRSystemSlice(this, DURATION_0);
+	mCurGrSystemSlice = new GRSystemSlice(this, DURATION_0);
 	// this is arguable: the 0 is the first glue, this is only for the very first start ....
-	mGrSystemSlice->mStartSpringID = 0;
+	mCurGrSystemSlice->mStartSpringID = 0;
 	mMyStaffs = new VStaff(0); // the Staves are not owned by the Manager
 
 	// An Array of Voice-Managers
@@ -178,7 +178,7 @@ GRStaffManager::~GRStaffManager()
 
 	// never owned ...
 	delete mStaffStateVect;
-	// the staffs are not owned directly but are handled by the mGrSystemSlice which is deleted below .
+	// the staffs are not owned directly but are handled by the mCurGrSystemSlice which is deleted below .
 	delete mMyStaffs;
     mMyStaffs = nullptr;
 
@@ -189,7 +189,7 @@ GRStaffManager::~GRStaffManager()
 	delete mSimpleRods;
 	delete mComplexRods;
 	delete mSpringVector;
-	delete mGrSystemSlice;
+	delete mCurGrSystemSlice;
 }
 
 // ----------------------------------------------------------------------------
@@ -202,15 +202,17 @@ void GRStaffManager::createStaves()
     // We have a ARmusic (armusic) and start from the beginning ...
     // now we go through all voices and create graphical representations. We also
     // add these to the respective staves (standard or handled by staff-tag)
+
+    // creates GRVoiceManager for each ARVoice
     int voicesCount = initVoices();
 
     // this parameter is used to capture explicit \newSystem tags. The height
     // of the page is returned by FindOptimum in the case of a newSystem-call 
-    float beginheight = 0.0;
+    float beginHeight = 0.0;
 
     // This controls if the VoiceManagers go to the next event.
     // It becomes false if the next event is not tag event.
-    bool filltagmode = true;
+    bool fillTagMode = true;
 
     // This is set to true if all voices ends.
     // It is first set to true and if there is at least one voice still
@@ -230,15 +232,15 @@ void GRStaffManager::createStaves()
         state.minswitchtp = MAX_DURATION;
 
         // now, we go through all the voices sequentially
-        allVoicesRead = nextTimePosition(voicesCount, filltagmode, state);
+        allVoicesRead = nextTimePosition(voicesCount, fillTagMode, state);
 
         // now we need to check whether we need to switch to non-filltagmode
-        if (filltagmode)
+        if (fillTagMode)
         {
             // we had tags; now we check, whether tags follow
             if (!state.continueWithFillTagMode)
             {
-                filltagmode = false;
+                fillTagMode = false;
 
                 //! SPRING-ROD SPACING ALGORITHM
                 // no tags follow, so now we finish the Synchronization-Slice at the current tp.
@@ -257,28 +259,28 @@ void GRStaffManager::createStaves()
                     float force = 0.0;
                     pbs->SaveState(mMyStaffs, mVoiceMgrList, this, state.timePos, force, state.pbreakval);
 
-                    mGrSystemSlice->addPossibleBreakState(pbs);
+                    mCurGrSystemSlice->addPossibleBreakState(pbs);
 
-                    mGrSystemSlice->setNumber(mSystemSlices->GetCount() + 1);
-                    mGrSystemSlice->mEndSpringID = mSpringID - 1;
+                    mCurGrSystemSlice->setNumber(mSystemSlices->GetCount() + 1);
+                    mCurGrSystemSlice->mEndSpringID = mSpringID - 1;
 
                     // this is the location, where the systemslice is "officially" finished.
-                    mGrSystemSlice->Finish();
-                    mSystemSlices->AddTail(mGrSystemSlice);
+                    mCurGrSystemSlice->Finish();
+                    mSystemSlices->AddTail(mCurGrSystemSlice);
 
-                    // then we build a new mGrSystemSlice, and start a new ...
-                    mGrSystemSlice = nullptr;
+                    // then we build a new mCurGrSystemSlice, and start a new ...
+                    mCurGrSystemSlice = nullptr;
                     mLastSpringID = mSpringID;
                 }
 
                 if (state.newline == kNewSystem || state.newline == kNewPage)
-                    beginheight = systemBreak(state.newline, beginheight);
+                    beginHeight = systemBreak(state.newline, beginHeight);
 
                 if (state.newline == kNewPage)
                 {
                     mGrPage = new GRPage(mGrMusic, this, state.timePos, settings, mGrPage);
                     mGrMusic->addPage(mGrPage);
-                    beginheight = 0.0;
+                    beginHeight = 0.0;
                 }
 
                 if (state.newline != kNormalState)
@@ -287,16 +289,16 @@ void GRStaffManager::createStaves()
                     // now we tell each voice, that we have handled the break-condition
                     // remember that we are breaking right now mIsBreak = true;
                     // we actually have to create a new systemslice so that we can put something together ....
-                    mGrSystemSlice = new GRSystemSlice(this, state.timePos);
+                    mCurGrSystemSlice = new GRSystemSlice(this, state.timePos);
 
                     // This is important: a newline == 3 means, that this is only a potential breakpoint
                     // newline != 3 is a user-imposed real breakpoint
                     // In this case, the begin elements of all staves are already there and will not be 
                     // added manually therefore, the first spring is the glue spring and will be present.
                     if (state.newline == kPBreak)
-                        mGrSystemSlice->mStartSpringID = mSpringID;
+                        mCurGrSystemSlice->mStartSpringID = mSpringID;
                     else
-                        mGrSystemSlice->mStartSpringID = 0;
+                        mCurGrSystemSlice->mStartSpringID = 0;
                     delete mMyStaffs;
                     mMyStaffs = new VStaff(0); // the Staves are no longer valid and need to be created a new ...
 
@@ -306,7 +308,7 @@ void GRStaffManager::createStaves()
                         voiceManager->DoBreak(state.timePos, state.newline);
                     }
 
-                    filltagmode = true;
+                    fillTagMode = true;
                 }
             }
         }
@@ -319,8 +321,7 @@ void GRStaffManager::createStaves()
                 assert(false);			            // there must have been a timeposition
 
             // if we need to switch, then we switch
-            if (state.minswitchtp == state.timePos)
-                filltagmode = true;
+            fillTagMode = (state.minswitchtp == state.timePos);
 
             //! SPRING-ROD SPACING ALGORITHM
             FinishSyncSlice(state.timePos);
@@ -352,18 +353,18 @@ void GRStaffManager::createStaves()
 
             float force = 0.0;
             pbs->SaveState(mMyStaffs, mVoiceMgrList, this, state.timePos, force, state.pbreakval);
-            mGrSystemSlice->addPossibleBreakState(pbs);
+            mCurGrSystemSlice->addPossibleBreakState(pbs);
 
             // now we need to add the systemslice to the list of available system-slices ....
-            mGrSystemSlice->setNumber(mSystemSlices->GetCount() + 1);
-            mGrSystemSlice->mEndSpringID = mSpringID - 1;
-            mGrSystemSlice->Finish();
-            mSystemSlices->AddTail(mGrSystemSlice);
-            mGrSystemSlice = nullptr;
+            mCurGrSystemSlice->setNumber(mSystemSlices->GetCount() + 1);
+            mCurGrSystemSlice->mEndSpringID = mSpringID - 1;
+            mCurGrSystemSlice->Finish();
+            mSystemSlices->AddTail(mCurGrSystemSlice);
+            mCurGrSystemSlice = nullptr;
         }
     }
 
-    FindOptimumBreaks(0, beginheight);
+    FindOptimumBreaks(0, beginHeight);
 }
 
 // ----------------------------------------------------------------------------
@@ -372,64 +373,63 @@ void GRStaffManager::createStaves()
 // This method computes time positions as well as new line information,
 // possible break value and a flag for tags management (continueWithFillTagMode).
 // Returns a boolean value to indicate the end of all voices.
-bool GRStaffManager::nextTimePosition (int voicesCount, bool filltagmode, TCreateStavesState& state)
+bool GRStaffManager::nextTimePosition (int voicesCount, bool fillTagMode, TCreateStavesState& state)
 {
-    TYPE_TIMEPOSITION currentTimePos;
 	bool endOfVoice = true;
 
+    // iterate thru all voices in parallel
     for (int i = 0; i < voicesCount; i++)
 	{
-        currentTimePos = state.timePos;
-
 		GRVoiceManager * voiceManager = mVoiceMgrList->Get(i);
 
-        //! 1. Iterates thru current voice and create related GR notation elements
-        int status = voiceManager->Iterate(currentTimePos, filltagmode);
+        TYPE_TIMEPOSITION currentTimePos = state.timePos;
+
+        //! 1. Iterates thru current voice and creates related GR notation elements
+        int status = voiceManager->Iterate(currentTimePos, fillTagMode);
 
         if (status != GRVoiceManager::ENDOFVOICE)
             endOfVoice = false;
 
         //! 2. Updating the TCreateStavesState
-
-		// minswitchtp remembers the next timeposition for an event. If the 
-		// filltagmode is 0 after this loop, this value is taken for incrementing the curTP.
+        // if the next item is event with no duration or a TAG we need to remember that position
+        // if current time position becomes equal to minswitchtp than fillTagMode will become true
         if (status == GRVoiceManager::CURTPBIGGER_ZEROFOLLOWS || status == GRVoiceManager::DONE_ZEROFOLLOWS)
 		{
             if (currentTimePos < state.minswitchtp)
                 state.minswitchtp = currentTimePos;
 		}
 
-        if (status != GRVoiceManager::MODEERROR)
-        {
-			if (filltagmode)
-			{
-                // if there has been at last one tag -> continue with filltagmode
-                if (!state.continueWithFillTagMode && status == GRVoiceManager::DONE_ZEROFOLLOWS)
-                    state.continueWithFillTagMode = true;
+        if (status == GRVoiceManager::MODEERROR)
+            continue;
+
+        if (fillTagMode)
+		{
+            // if there has been at last one tag -> continue with filltagmode
+            if (!state.continueWithFillTagMode && status == GRVoiceManager::DONE_ZEROFOLLOWS)
+                state.continueWithFillTagMode = true;
 			
-                if (status == GRVoiceManager::NEWSYSTEM) {
-					if (state.newline == 0 || state.newline == 3)
-						state.newline = kNewSystem;
-				}
-                else if (status == GRVoiceManager::NEWPAGE)
-					state.newline = kNewPage;				// this overrides any other newline setting
-                else if (status == GRVoiceManager::PBREAK)
-				{
-                    if (state.newline == kNormalState) {
-						state.newline = kPBreak;
-						state.pbreakval = voiceManager->pbreakval;
-					}
+            if (status == GRVoiceManager::NEWSYSTEM) {
+                if (state.newline == kNormalState || state.newline == kPBreak)
+					state.newline = kNewSystem;
+			}
+            else if (status == GRVoiceManager::NEWPAGE)
+				state.newline = kNewPage;				// this overrides any other newline setting
+            else if (status == GRVoiceManager::PBREAK)
+			{
+                if (state.newline == kNormalState) {
+					state.newline = kPBreak;
+					state.pbreakval = voiceManager->pbreakval;
 				}
 			}
-            // no filltagmode (that is eventmode)
-			else { 
-                if (status == GRVoiceManager::DONE_ZEROFOLLOWS || status == GRVoiceManager::DONE_EVFOLLOWS ||
-                    status == GRVoiceManager::DONE || status == GRVoiceManager::CURTPBIGGER_EVFOLLOWS ||
-                    status == GRVoiceManager::CURTPBIGGER_ZEROFOLLOWS)
-				{
-					// set the increment of timeposition
-                    if (currentTimePos < state.mintp) state.mintp = currentTimePos;
-				}
+		}
+        // no filltagmode (that is event-mode)
+		else { 
+            if (status == GRVoiceManager::DONE_ZEROFOLLOWS || status == GRVoiceManager::DONE_EVFOLLOWS ||
+                status == GRVoiceManager::DONE || status == GRVoiceManager::CURTPBIGGER_EVFOLLOWS ||
+                status == GRVoiceManager::CURTPBIGGER_ZEROFOLLOWS)
+			{
+				// set the increment of timeposition
+                if (currentTimePos < state.mintp) state.mintp = currentTimePos;
 			}
 		}
 	}
@@ -442,19 +442,14 @@ int GRStaffManager::initVoices()
 {
     int voiceCount = 0;
 
-	ARMusicalVoice * voice;
-	GuidoPos pos = mArMusic->GetHeadPosition();
+	GuidoPos voicePos = mArMusic->GetHeadPosition();
 
-	while (pos) {
-		voice = mArMusic->GetNext(pos);
-		// this is important, so that chords are not over-read but the explicit events are read.
+    while (voicePos)
+    {
+        ARMusicalVoice * voice = mArMusic->GetNext(voicePos);
 		voice->setReadMode(ARMusicalVoice::EVENTMODE);
 
         GRVoiceManager * voiceManager = new GRVoiceManager(mGrMusic, this, voice, voiceCount);
-		// This call initializes the GRVoiceManager
-		// ATTENTION: realize the significance of STAFF-Tags at the very start!
-		voiceManager->BeginManageVoice();
-
         mVoiceMgrList->Set(voiceCount++, voiceManager);
 	}
 
@@ -591,33 +586,33 @@ GRStaffManager::notifyAccoladeTag(ARAccolade * inAccoladeTag)
 
 The StaffManager has to make sure that the staff is there, otherwise it needs to create it.
 */
-void GRStaffManager::prepareStaff(int staff)
+void GRStaffManager::prepareStaff(int staffNum)
 {
-    GRStaff * curstaff = mMyStaffs->Get(staff);
+    GRStaff * curStaff = mMyStaffs->Get(staffNum);
 
-    if (curstaff == nullptr)
+    if (curStaff == nullptr)
     {
-        curstaff = new GRStaff(mGrSystemSlice, settings.proportionalRenderingForceMultiplicator);
+        curStaff = new GRStaff(mCurGrSystemSlice, settings.proportionalRenderingForceMultiplicator);
 
         if (mStaffStateVect) {
-            // this just copies the state information ...
-            GRStaffState * myss = mStaffStateVect->Get(staff);
-            if (myss) {
+            GRStaffState * staffState = mStaffStateVect->Get(staffNum);
+            if (staffState) {
+                // this just copies the state information ...
                 // this sets the information explicitly that would otherwise be automatically
                 // copied with CreateBeginElements if an automatic Break instead of a 
                 // forces break would occur.
-                curstaff->setStaffState(myss);
+                curStaff->setStaffState(staffState);
             }
         }
 
-        mGrSystemSlice->addStaff(curstaff, staff);
+        mCurGrSystemSlice->addStaff(curStaff, staffNum);
 
         // We apply potential staff size defined with GuidoSetStaffSize API call
-        applyStaffSize(curstaff, staff);
+        applyStaffSize(curStaff, staffNum);
     }
 
     // set the staff in  Vector mMyStaffs.
-    mMyStaffs->Set(staff, curstaff);
+    mMyStaffs->Set(staffNum, curStaff);
 }
 
 
@@ -2046,27 +2041,27 @@ In this case, a new sff is created to reflect this. Each
 systemslice gets a pointer to the current beginning sff.
 this can then be used when finding optimum breaks.
 */
-void GRStaffManager::UpdateBeginningSFF(int staffnum)
+void GRStaffManager::UpdateBeginningSFF(int staffNum)
 {
-
     // I have to iterate through the staves and find the current clefs and keys. 
     // I then have to create the SFF for that ....
     if (!mStaffStateVect)
         mStaffStateVect = new IStaffStateVector(0);
 
-    bool needsupdate = false;
-    int i;
+    bool needsUpdate = false;
+
     int mini = mMyStaffs->GetMinimum();
     int maxi = mMyStaffs->GetMaximum();
 
-    for (i = mini; i <= maxi; i++)
+    for (int i = mini; i <= maxi; i++)
     {
         GRStaff * staff = mMyStaffs->Get(i);
+
         if (staff)
         {
             mStaffStateVect->Set(i, &staff->getGRStaffState());
 
-            if (i == staffnum)
+            if (i == staffNum)
             {
                 GuidoPos pos = staff->mCompElements.GetTailPosition();
                 // ONLY The last element is looked at!!!!
@@ -2077,7 +2072,6 @@ void GRStaffManager::UpdateBeginningSFF(int staffnum)
                     GRKey * tmpkey = 0;
                     if ((tmpclef = dynamic_cast<GRClef *>(el)) != 0)
                     {
-
                         const NVRect & tmprect = tmpclef->getBoundingBox();
                         float tmpposy = tmpclef->getPosition().y;
 
@@ -2085,13 +2079,9 @@ void GRStaffManager::UpdateBeginningSFF(int staffnum)
                         float tmpbottom = staffBottomVector.Get(i);
 
                         if (tmprect.top + tmpposy < tmptop)
-                        {
                             staffTopVector.Set(i, tmprect.top + tmpposy);
-                        }
                         if (tmprect.bottom + tmpposy > tmpbottom)
-                        {
                             staffBottomVector.Set(i, tmprect.bottom + tmpposy);
-                        }
 
                         if (mMaxClef)
                         {
@@ -2099,13 +2089,13 @@ void GRStaffManager::UpdateBeginningSFF(int staffnum)
                             if (tmprect.Width() > maxrect.Width())
                             {
                                 mMaxClef = tmpclef;
-                                needsupdate = true;
+                                needsUpdate = true;
                             }
                         }
                         else
                         {
                             mMaxClef = tmpclef;
-                            needsupdate = true;
+                            needsUpdate = true;
                         }
                     }
                     if ((tmpkey = dynamic_cast<GRKey *>(el)) != 0)
@@ -2115,14 +2105,11 @@ void GRStaffManager::UpdateBeginningSFF(int staffnum)
 
                         float tmptop = staffTopVector.Get(i);
                         float tmpbottom = staffBottomVector.Get(i);
+
                         if (tmprect.top + tmpposy < tmptop)
-                        {
                             staffTopVector.Set(i, tmprect.top + tmpposy);
-                        }
                         if (tmprect.bottom + tmpposy > tmpbottom)
-                        {
                             staffBottomVector.Set(i, tmprect.bottom + tmpposy);
-                        }
 
                         if (mMaxKey)
                         {
@@ -2130,13 +2117,13 @@ void GRStaffManager::UpdateBeginningSFF(int staffnum)
                             if (tmprect.Width() > maxrect.Width())
                             {
                                 mMaxKey = tmpkey;
-                                needsupdate = true;
+                                needsUpdate = true;
                             }
                         }
                         else
                         {
                             mMaxKey = tmpkey;
-                            needsupdate = true;
+                            needsUpdate = true;
                         }
                     }
                 }
@@ -2145,7 +2132,7 @@ void GRStaffManager::UpdateBeginningSFF(int staffnum)
     }
 
     // now i use maxclef and mMaxKey to create the current sff .....
-    if (needsupdate && mMaxClef && mMaxKey)
+    if (needsUpdate && mMaxClef && mMaxKey)
     {
         GRBeginSpaceForceFunction2 * bsff = new GRBeginSpaceForceFunction2(settings.force);
         // then I need a new sff ....
@@ -2183,16 +2170,16 @@ void GRStaffManager::UpdateBeginningSFF(int staffnum)
         float extent = bsff->getExtent(bsff->getOptForce());
 #endif
 
-        mini = staffTopVector.GetMinimum();
-        maxi = staffTopVector.GetMaximum();
+        int mini = staffTopVector.GetMinimum();
+        int maxi = staffTopVector.GetMaximum();
+
         for (int cnt = mini; cnt <= maxi; ++cnt)
         {
             float tmptop = staffTopVector.Get(cnt);
             float tmpbottom = staffBottomVector.Get(cnt);
+
             if (tmptop < 0 || tmpbottom > 0)
-            {
                 bsff->setHeight(cnt, tmptop, tmpbottom);
-            }
         }
         beg_sff_list->AddTail(bsff);
     }
@@ -2573,7 +2560,7 @@ int GRStaffManager::FinishSyncSlice(const TYPE_TIMEPOSITION & tp)
                     mSpringVector->Get(mSpringID - 1)->addElement(mytag, nullptr);
                     // added to last spring ...
                 }
-                mGrSystemSlice->AddTail(mytag);
+                mCurGrSystemSlice->AddTail(mytag);
             }
             else
             {

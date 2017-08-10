@@ -129,7 +129,7 @@ void GRPossibleBreakState::SaveState(KF_IVector<GRStaff> * vstaffs,
 			vts->setLastRod(v ? v->getLastRod() : 0);
 			vts->setFirstRod(v ? v->getFirstRod() : 0);
 			vts->pstaff = vcmgr->mCurGrStaff;
-			vts->staffnum = vcmgr->staffnum;
+			vts->staffnum = vcmgr->curStaffNum;
 			vtsvect->Set(i,vts);
 		}
 	}

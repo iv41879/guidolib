@@ -1,4 +1,4 @@
-/*
+﻿/*
   GUIDO Library
   Copyright (C) 2002  Holger Hoos, Juergen Kilian, Kai Renz
   Copyright (C) 2003, 2004  Grame
@@ -281,15 +281,59 @@ class TestTimeMap : public TimeMapCollector
 #endif
 
 // --------------------------------------------------------------------------
+//TODO: remove
+#include <windows.h>
 static GRHandler CreateGr(ARHandler ar, ARPageFormat* format, const GuidoLayoutSettings * settings)
 {
 	ARMusic * arMusic = ar->armusic;
+
+    //TODO: remove
+    //! Print all ARMusicalObjects
+#if 0
+    GuidoPos voicePos = arMusic->GetHeadPosition();
+    while (voicePos)
+    {
+        auto voice = arMusic->GetNext(voicePos);
+
+        std::stringstream s;
+        voice->print(s);
+
+        std::string msg = s.str();
+        msg.append("\n");
+
+        char voiceBuffer[100];
+        sprintf(voiceBuffer, "%s", msg.data());
+        OutputDebugString(voiceBuffer);
+
+        voice->setReadMode(ARMusicalVoice::EVENTMODE);
+
+        ARMusicalVoiceState state;
+        GuidoPos elementPos = voice->GetHeadPosition(state);
+        while (elementPos)
+        {
+            auto element = voice->GetNext(elementPos, state);
+            std::stringstream s;
+            element->print(s);
+
+            if (s.str().length() == 0) {
+                element->printGMNName(s);
+            }
+
+            std::string msg = s.str();
+            msg.append("\n");
+
+            char buffer[100];
+            sprintf(buffer, "%s", msg.data());
+            OutputDebugString(buffer);
+        }
+    }
+#endif
 
 	long startTime = GuidoTiming::getCurrentmsTime();
 
 	// Create new gr music object with a copy of default pageFormat.
 	GRMusic *grMusic = new GRMusic(arMusic, format, settings, false);
-	if (grMusic == 0) return 0;
+	if (grMusic == nullptr) return nullptr;
 
 	if (settings  && settings->checkLyricsCollisions)
 		grMusic->checkLyricsCollisions();
@@ -301,6 +345,7 @@ static GRHandler CreateGr(ARHandler ar, ARPageFormat* format, const GuidoLayoutS
 	ar->refCount++;
 	// - Propagate the music name
 	grMusic->setName(arMusic->getName().c_str());
+
 	//  - Add the GRMusic object to the global list
 	return guido_RegisterGRMusic(grMusic, ar);
 }

@@ -80,39 +80,38 @@ class ARMusicalVoiceState
 		const ARMeter *	curMeter() const				{ return curmeter; }
 
 	protected:
-		// The timeposition of the last barline.
-		TYPE_TIMEPOSITION curlastbartp;
 
-		GuidoPos curlastbarpos;
-		// ptagpos indicates the current position within the ptaglist.
+        // time position within the voice
+        TYPE_TIMEPOSITION curTimePosition;
+        // item position within the voice
+        GuidoPos vpos;
+
+		TYPE_TIMEPOSITION lastBarLineTimePosition;
+		GuidoPos lastBarLinePosition;
+
+		// current position within the ARMusicalVoice::mPosTagList which
+        // is created during parsing process (AR creation)
 		GuidoPos ptagpos;
 
-		TYPE_TIMEPOSITION curtp;
-		// Distinguish between Tags, that allow a range and those, who don't 
+        // list of tags that determine the state of the voice (clef, key, meter ...)
+        // (tags that have no range)
+		TagList * curstatetags;
 
-		TagList * curstatetags; // A list of Tags, that determine the State of
-							// the voice (e.g. clef, key, meter, etc. )
-							// All the tags, that have no range ...
+        // helper state tags for autobeaming algorithm
+        ARMeter * curmeter;
+        ARBeamState * curbeamstate;
 
-		// the tags that are just tags in the musical voice, like e.g. ARText 
-		// or ARFermata ... (the ones without ranges)
+        // list of musical voice tags (ARText, ARFermata ...)
+        // (tags that have no range)
 		TagList * curtags;
 
-		GuidoPos vpos; // Position within the voice
-
-		// now we save the current meter
-		// which is actually also a state-tag -> this is handled so that autobeaming can be done elegantly
-		ARMeter * curmeter;
-
-		// the current displayduration (if set) ...
+		// current display duration (if available)
 		ARDisplayDuration * fCurdispdur;
-
-		// we also save the beamstate ... makes it more elegant for autobeaming ...
-		ARBeamState * curbeamstate;
 
 		ARAuto * curautostate;
 
 		ARGrace * curgracetag;
+
 		ARChordTag * curchordtag;
 
 		ARMusicalVoiceState * chordState;
@@ -129,7 +128,6 @@ class ARMusicalVoiceState
 
 		// this list holds all the position tags that are currently active.
 		PositionTagList * curpositiontags;
-	
 };
 
 #endif

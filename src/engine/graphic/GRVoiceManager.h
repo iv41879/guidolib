@@ -66,7 +66,10 @@ public:
 
 	float pbreakval;
 
+    // Parses all the tags that handle state-information
+    // like pageFormat, systemFormat, staff etc...
 	void		ReadBeginTags(const TYPE_TIMEPOSITION & tp);
+
 	void		setGRStaff(GRStaff * newstaff);
 	void		closeOpenTags();
 	float		GetBreakScore(const TYPE_TIMEPOSITION & tp);
@@ -98,7 +101,7 @@ public:
 
 			int		Iterate		(TYPE_TIMEPOSITION & tp, bool filltagmode);
 			int		DoBreak		(const TYPE_TIMEPOSITION & tp, int system_or_page);
-			int		getStaffNum () const	{ return staffnum; }
+			int		getStaffNum () const	{ return curStaffNum; }
 			const ARMusicalVoiceState * getVoiceState() const	{ return fVoiceState; }
 
 
@@ -133,7 +136,11 @@ protected:
 	static bool &	getCurStaffDraw(int index);
 
 	TYPE_TIMEPOSITION curtp;
-	int staffnum;
+
+    // current staff number (index)
+    // by default it has value of voice number (index)
+    // it changes whenever staff state tag is changed in the score
+	int curStaffNum;
 
 	GREvent *CreateNote			(const TYPE_TIMEPOSITION & tp, ARMusicalObject * arObject);
 	GREvent *CreateEmpty		(const TYPE_TIMEPOSITION & tp, ARMusicalObject * arObject);
@@ -158,11 +165,19 @@ protected:
 
 private:
 	// this is needed for determining the elements that are centered in a bar like whole-note-rests
+
 	GRMusic*				fMusic;
 	GREvent *				fLastnonzeroevent;
 	GRTagARNotationElement* fLastbar;
 	GROctava*				fLastOctava;
 	ARMusicalVoiceState *	fVoiceState;
+
+    // List of all tags - position, special and/or tags with related GR representation.
+    // When a Tag (e.g. the graphical representation of the Tag) is
+    // on this tag, each Event (something that has a duration even
+    // if it is 0) is associated with it. (addAssociation is called). 
+    // This ensures, that the graphical representation "knows", which 
+    // tags belong to it.
 	GRTagPointerList *		fGRTags;
 	
 

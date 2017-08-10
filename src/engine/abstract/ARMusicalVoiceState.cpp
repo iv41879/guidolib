@@ -29,7 +29,7 @@ using namespace std;
 
 ARMusicalVoiceState::ARMusicalVoiceState()
 {
-    curlastbarpos = NULL;
+    lastBarLinePosition = NULL;
 	curstatetags = NULL;
 	curtags = NULL;
 	curpositiontags = NULL;
@@ -113,7 +113,7 @@ ARMusicalVoiceState & ARMusicalVoiceState::operator = (const ARMusicalVoiceState
 		removedpositiontags = NULL;
 	
 	vpos  = vst.vpos;
-	curtp = vst.curtp;
+    curTimePosition = vst.curTimePosition;
 	
 	ptagpos = vst.ptagpos;
 	
@@ -126,8 +126,8 @@ ARMusicalVoiceState & ARMusicalVoiceState::operator = (const ARMusicalVoiceState
 //	curbreakstate = vst.curbreakstate;
 	curautostate  = vst.curautostate;
 
-	curlastbartp  = vst.curlastbartp;
-	curlastbarpos = vst.curlastbarpos;
+    lastBarLineTimePosition = vst.lastBarLineTimePosition;
+    lastBarLinePosition = vst.lastBarLinePosition;
 
 	delete chordState;
 	chordState = NULL;

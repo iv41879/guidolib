@@ -162,8 +162,12 @@ class ARMusicalVoice : public ObjectList, public ARMusicalEvent
 		void			setVoiceNum(int num)				{ voicenum = num;	}
 		int				getVoiceNum() const					{ return voicenum;	}
 		void			removeAutoTags();
-		void			setReadMode(_readmode newreadmode)	{ readmode = newreadmode; }
-		_readmode getReadMode() const						{ return readmode; }
+
+        // sets read mode - chords or events mode
+        // if in chords mode than explicit events that are contained in the chord are over-read.
+        // if in even mode than all the events are read - even the one contained in chord.
+		void      setReadMode(_readmode newreadmode)	{ readmode = newreadmode; }
+		_readmode getReadMode() const					{ return readmode; }
 
         // C.D. 22/10/2014 Perf improvement : prevent CheckBreakPosition from searching a RepeatBegin tag in all voice list
         void addRepeatBegin(ARRepeatBegin *repeatBegin)		{ repeatBeginList->push_back(repeatBegin); }
